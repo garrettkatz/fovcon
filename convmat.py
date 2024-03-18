@@ -45,7 +45,8 @@ class ConvMat(tr.nn.Module):
 
         # init trainable parameter tensors
         self.weights = (tr.randn(len(self.idx)) / len(self.idx)).requires_grad_(True)
-        self.biases = (tr.randn(rows*cols*out_channels) / (rows*cols*out_channels)).requires_grad_(True)
+        # self.biases = (tr.randn(rows*cols*out_channels) / (rows*cols*out_channels)).requires_grad_(True)
+        self.biases = (tr.randn(rows*cols*out_channels) / len(self.idx)).requires_grad_(True)
 
     def parameters(self):
         return (self.weights, self.biases)
@@ -57,10 +58,14 @@ class ConvMat(tr.nn.Module):
         # assign weights to sparse connectivity matrix
         mat = tr.zeros(self.dims_in, self.dims_out)
         mat.view(self.dims_in*self.dims_out)[self.idx] = self.weights
+        self.mat = mat
 
         # matrix-vector multiply
-        out = img.reshape(-1, self.dims_in) @ mat + self.biases
+        out = img.reshape(-1, self.dims_in) @ mat
+        out = out + self.biases
+        # print(img.shape, img.reshape(-1, self.dims_in).shape, mat.shape, self.biases.shape, out.shape)
         out = out.reshape(-1, self.rows, self.cols, self.out_channels)
+        # print(out.shape)
         return out
 
 

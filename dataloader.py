@@ -53,7 +53,8 @@ def filter_frames(examples):
         if action == -1: continue
     
         # skip frames with only one gaze point
-        if action == 2 or len(gaze) <= 1: continue
+        # if action == 2 or len(gaze) <= 1: continue
+        if len(gaze) <= 1: continue
     
         # skip frames where gaze points barely changed
         if np.fabs(gaze[0] - gaze[-1]).max() < 5: continue
@@ -71,16 +72,17 @@ if __name__ == "__main__":
     data_path = os.path.join(os.environ["HOME"], "atarihead")
 
     # the leading portion of filenames for one trial
-    trial_base = "100_RZ_3592991_Aug-24-11-44-38"
+    trial_base = "100_RZ_3592991_Aug-24-11-44-38" # venture
+    # trial_base = "52_RZ_2394668_Aug-10-14-52-42" # ms pacman
 
     # init data loader
     dl = DataLoader(data_path, [trial_base])
 
     # init fcg
     from fcg import FovealCartesianGeometry
-    rho_0 = 6
+    rho_0 = 20
     rho_max = 60 # cols are 160
-    numrings = 20
+    numrings = 40
     fcg = FovealCartesianGeometry(rho_0, rho_max, numrings)
     
     # extract and plot a few arbitrary frames from the trial

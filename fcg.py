@@ -124,6 +124,8 @@ if __name__ == "__main__":
 
     fcg = FovealCartesianGeometry(rho_0, rho_max, numrings)
 
+    print(fcg.dst_idx[0])
+
     # visualize the FCG sample coordinates in source image
     pt.figure(figsize =(10,10))
     pt.imshow(fcg.src_masks)
