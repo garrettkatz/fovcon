@@ -1,3 +1,7 @@
+try:
+    profile
+except:
+    profile = lambda x: x
 import numpy as np
 import matplotlib.pyplot as pt
 
@@ -54,18 +58,16 @@ class FovealCartesianGeometry:
         # output dimension
         self.out_dim = 2*self.numrings-1
 
+    @profile
     def sample(self, img, fr, fc):
 
         # rgb channels of destination image
         numrings = self.numrings
-        result_r = np.zeros((2*numrings-1, 2*numrings-1))
-        result_g = np.zeros((2*numrings-1, 2*numrings-1))
-        result_b = np.zeros((2*numrings-1, 2*numrings-1))
+        result = np.zeros((2*numrings-1, 2*numrings-1, 3))
 
         # central pixel
-        result_r.flat[self.dst_idx[0]] = img[fr,fc,0]
-        result_g.flat[self.dst_idx[0]] = img[fr,fc,1]
-        result_b.flat[self.dst_idx[0]] = img[fr,fc,2]
+        idx_0 = (3*self.dst_idx[0][:,None] + np.array([[0,1,2]])).flatten()
+        result.flat[idx_0] = img[fr,fc,:]
 
         # concentric rings
         for r in range(1, len(self.rhos)):
@@ -78,9 +80,8 @@ class FovealCartesianGeometry:
             width = rho - self.rhos[r-1]
 
             # allocate average-pooled pixel values
-            pools_r = np.zeros(len(self.dst_idx[r]))
-            pools_g = np.zeros(len(self.dst_idx[r]))
-            pools_b = np.zeros(len(self.dst_idx[r]))
+            pools = np.zeros((len(self.dst_idx[r]), 3))
+            idx_r = (3*self.dst_idx[r][:,None] + np.array([[0,1,2]])).flatten()
 
             # pool around each foveal-offset pixel
             for p, (row, col) in enumerate(f_coords):
@@ -98,17 +99,19 @@ class FovealCartesianGeometry:
                 if row_lo == row_hi or col_lo == col_hi: continue
 
                 # calculate pooled average
-                pools_r[p] = img[row_lo:row_hi, col_lo:col_hi, 0].mean()
-                pools_g[p] = img[row_lo:row_hi, col_lo:col_hi, 1].mean()
-                pools_b[p] = img[row_lo:row_hi, col_lo:col_hi, 2].mean()
+                pools[p] = img[row_lo:row_hi, col_lo:col_hi, :].mean(axis=(0,1))
+
+            # # build sparse version of pooling
+            # offsets = np.array(it.product(range(-width+1, width), repeat=2)) # (offsets, 2)
+            # pool_coords = f_coords + offsets # (centers, 1, 2) + (1, offsets, 2) = (centers, offsets, 2)
+            # np.ravel_multi_index((pool_coords[:,:,0], pool_coords[:,:,1]), img.shape[:2] 
+            # indices = np.arange(len(f_coords))[:,
+            # smat = sparse_coo_tensor(indices, values=1, size=(len(idx_r), img.numel()))
 
             # assign pooled pixel values into destination indices
-            result_r.flat[self.dst_idx[r]] = pools_r
-            result_g.flat[self.dst_idx[r]] = pools_g
-            result_b.flat[self.dst_idx[r]] = pools_b
+            result.flat[idx_r] = pools
 
         # return stacked rgb channels
-        result = np.stack((result_r, result_g, result_b), axis=2)
         return result
 
 

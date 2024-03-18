@@ -1,3 +1,7 @@
+try:
+    profile
+except:
+    profile = lambda x: x
 import itertools as it
 import numpy as np
 import matplotlib.pyplot as pt
@@ -46,17 +50,9 @@ class ConvMat(tr.nn.Module):
     def parameters(self):
         return (self.weights, self.biases)
 
+    @profile
     def forward(self, img):
         # img.shape = (batch size, rows, cols, channels)
-
-        # # assign weights to sparse connectivity matrix
-        # mat = tr.zeros(self.dims_out, self.dims_in)
-        # mat.view(self.dims_in*self.dims_out)[self.idx] = self.weights
-
-        # # matrix-vector multiply
-        # out = mat @ img.reshape(self.dims_in) + self.biases
-        # out = out.reshape(self.rows, self.cols, self.out_channels)
-        # return out
 
         # assign weights to sparse connectivity matrix
         mat = tr.zeros(self.dims_in, self.dims_out)
