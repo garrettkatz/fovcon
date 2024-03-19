@@ -23,8 +23,9 @@ class ConvModel(tr.nn.Module):
         self.conv = ConvMat(in_dim, in_dim, in_channels=3, out_channels=1, kernel_size=kernel_size)
         self.relu = tr.nn.LeakyReLU()
         self.flat = tr.nn.Flatten()
-        self.lin1 = tr.nn.Linear(in_dim**2, hid_dim)
-        self.lin2 = tr.nn.Linear(hid_dim, out_dim)
+        # self.lin1 = tr.nn.Linear(in_dim**2, hid_dim)
+        # self.lin2 = tr.nn.Linear(hid_dim, out_dim)
+        self.lin = tr.nn.Linear(in_dim**2, out_dim)
     def forward(self, x, show=False):
         if show:
             pt.subplot(1,3,1)
@@ -39,20 +40,23 @@ class ConvModel(tr.nn.Module):
             pt.show()
         x = self.relu(x)
         x = self.flat(x)
-        # print('flat', x.shape, x.reshape(x.shape[0], -1)[:10,:10])
-        x = self.lin1(x)
-        x = self.relu(x)
-        # print('lin1', x.shape, x.reshape(x.shape[0], -1)[:10,:10])
-        x = self.lin2(x)
-        # print('lin2', x.shape, x.reshape(x.shape[0], -1)[:10,:10])
-        # input('.')
+        # # print('flat', x.shape, x.reshape(x.shape[0], -1)[:10,:10])
+        # x = self.lin1(x)
+        # x = self.relu(x)
+        # # print('lin1', x.shape, x.reshape(x.shape[0], -1)[:10,:10])
+        # x = self.lin2(x)
+        # # print('lin2', x.shape, x.reshape(x.shape[0], -1)[:10,:10])
+        # # input('.')
+
+        x = self.lin(x)
+
         return x
 
 @profile
 def main():
 
-    do_train = True
-    num_epochs = 100
+    do_train = False
+    num_epochs = 10
     kernel_size = 3
     batch_size = 32
     learning_rate = .01#0.0003
@@ -82,7 +86,7 @@ def main():
     #     tr.nn.LeakyReLU(),
     #     tr.nn.Linear(hid_dim, out_dim),
     # )
-    # model = ConvModel(dim, hid_dim, out_dim, kernel_size)
+    model = ConvModel(dim, hid_dim, out_dim, kernel_size)
 
     # fully-connected
     model = tr.nn.Sequential(
@@ -107,7 +111,7 @@ def main():
                 # forward pass
                 # logits = model(inp, show=(b==0))
                 logits = model(inp)
-                if b == 0: print(logits)
+                # if b == 0: print(logits)
                 loss = loss_fn(logits, targ)
                 loss_curve.append(loss.item())
                 correct.append((logits.argmax(dim=-1) == targ).to(float).mean())
@@ -131,11 +135,24 @@ def main():
     with open("convtrain.pkl", "rb") as f:
         loss_curve, accu_curve = pk.load(f)
 
-    pt.subplot(2,1,1)
-    pt.plot(loss_curve)
-    pt.yscale('log')
-    pt.subplot(2,1,2)
-    pt.plot(accu_curve)
+    nparams = len(tr.nn.utils.parameters_to_vector(model.parameters()))
+    updates_per_epoch = len(loss_curve) / len(accu_curve)
+    print(f"{nparams} parameters")
+
+    fig = pt.figure(figsize=(6,3))
+    pt.subplot(1,2,1)
+    pt.plot(2*np.arange(len(loss_curve))*nparams, loss_curve)
+    pt.ylabel("Loss")
+    # pt.xlabel("Total mult-adds")
+    # pt.yscale('log')
+    pt.subplot(1,2,2)
+    pt.plot(2*np.arange(len(accu_curve))*nparams*updates_per_epoch, accu_curve)
+    pt.ylabel("Accuracy")
+    # pt.xlabel("Total mult-adds")
+    # pt.xlabel("Epoch (pass over data)")
+    fig.supxlabel("Total multiply-adds (updates x params)")
+    pt.tight_layout()
+    pt.savefig("train.png")
     pt.show()
 
 if __name__ == "__main__": main()
