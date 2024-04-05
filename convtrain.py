@@ -20,7 +20,10 @@ def batched(batch_size, inputs, targets):
 class ConvModel(tr.nn.Module):
     def __init__(self, in_dim, hid_dim, out_dim, kernel_size):
         super().__init__()
-        self.conv = ConvMat(in_dim, in_dim, in_channels=3, out_channels=1, kernel_size=kernel_size)
+        # self.conv = ConvMat(in_dim, in_dim, in_channels=3, out_channels=1, kernel_sizes=np.full((in_dim, in_dim), kernel_size))
+        self.conv = ConvMat(
+            in_dim, in_dim, in_channels=3, out_channels=1,
+            kernel_sizes=np.random.randint(1, kernel_size+1, (in_dim, in_dim)))
         self.relu = tr.nn.LeakyReLU()
         self.flat = tr.nn.Flatten()
         # self.lin1 = tr.nn.Linear(in_dim**2, hid_dim)
@@ -55,7 +58,7 @@ class ConvModel(tr.nn.Module):
 @profile
 def main():
 
-    do_train = False
+    do_train = True
     num_epochs = 10
     kernel_size = 3
     batch_size = 32
@@ -88,13 +91,13 @@ def main():
     # )
     model = ConvModel(dim, hid_dim, out_dim, kernel_size)
 
-    # fully-connected
-    model = tr.nn.Sequential(
-        tr.nn.Flatten(),
-        tr.nn.Linear(3*dim**2, hid_dim),
-        tr.nn.LeakyReLU(),
-        tr.nn.Linear(hid_dim, out_dim),
-    )
+    # # fully-connected
+    # model = tr.nn.Sequential(
+    #     tr.nn.Flatten(),
+    #     tr.nn.Linear(3*dim**2, hid_dim),
+    #     tr.nn.LeakyReLU(),
+    #     tr.nn.Linear(hid_dim, out_dim),
+    # )
 
     # init optimizer and loss
     opt = tr.optim.Adam(model.parameters(), lr=learning_rate)
@@ -107,7 +110,7 @@ def main():
         for epoch in range(num_epochs):
             correct = []
             for b, (inp, targ) in enumerate(batched(batch_size, inputs, targets)):
-    
+
                 # forward pass
                 # logits = model(inp, show=(b==0))
                 logits = model(inp)
