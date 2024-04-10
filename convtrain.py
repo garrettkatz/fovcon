@@ -23,7 +23,8 @@ class ConvModel(tr.nn.Module):
         # self.conv = ConvMat(in_dim, in_dim, in_channels=3, out_channels=1, kernel_sizes=np.full((in_dim, in_dim), kernel_size))
         self.conv = ConvMat(
             in_dim, in_dim, in_channels=3, out_channels=1,
-            kernel_sizes=np.random.randint(1, kernel_size+1, (in_dim, in_dim)))
+            kernel_sizes=np.random.randint(1, kernel_size+1, (in_dim, in_dim)),
+            sparse=True)
         self.relu = tr.nn.LeakyReLU()
         self.flat = tr.nn.Flatten()
         # self.lin1 = tr.nn.Linear(in_dim**2, hid_dim)

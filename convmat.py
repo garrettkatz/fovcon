@@ -34,7 +34,7 @@ def conv_mask(rows, cols, in_channels, out_channels, kernel_sizes):
     return mask
 
 class ConvMat(tr.nn.Module):
-    def __init__(self, rows, cols, in_channels, out_channels, kernel_sizes):
+    def __init__(self, rows, cols, in_channels, out_channels, kernel_sizes, sparse=True):
         super().__init__()
 
         # save dimensions
@@ -44,6 +44,9 @@ class ConvMat(tr.nn.Module):
         self.rows = rows
         self.cols = cols
         self.out_channels = out_channels
+
+        # save flag for sparse vs dense matrix multiply
+        self.sparse = sparse
 
         # set up flat index of trainable weights, transposed to work well with batch input
         mask = conv_mask(*self.dims)
@@ -60,23 +63,24 @@ class ConvMat(tr.nn.Module):
     def forward(self, img):
         # img.shape = (batch size, rows, cols, channels)
 
-        # assign weights to sparse connectivity matrix
+        ## assign weights to connectivity matrix
 
-        ## sparse
-        mat = tr.sparse_coo_tensor(self.ij, self.weights, size=(self.dims_in, self.dims_out))
+        # sparse case
+        if self.sparse:
+            mat = tr.sparse_coo_tensor(self.ij, self.weights, size=(self.dims_in, self.dims_out))
 
-        # ## dense
-        # mat = tr.zeros(self.dims_in, self.dims_out)
-        # mat.view(self.dims_in*self.dims_out)[self.idx] = self.weights
+        # dense case
+        else:
+            mat = tr.zeros(self.dims_in, self.dims_out)
+            mat.view(self.dims_in*self.dims_out)[self.idx] = self.weights
 
+        # save it for future reference if needed
         self.mat = mat
 
-        # matrix-vector multiply
+        # reshaped matrix-vector multiply
         out = img.reshape(-1, self.dims_in) @ mat
         out = out + self.biases
-        # print(img.shape, img.reshape(-1, self.dims_in).shape, mat.shape, self.biases.shape, out.shape)
         out = out.reshape(-1, self.rows, self.cols, self.out_channels)
-        # print(out.shape)
         return out
 
 
@@ -99,7 +103,7 @@ if __name__ == "__main__":
 
     rows, cols, in_channels = 4, 4, 1
     out_channels, kernel_size = 1, 1
-    mod = ConvMat(rows, cols, in_channels, out_channels, np.full((rows, cols), kernel_size))
+    mod = ConvMat(rows, cols, in_channels, out_channels, np.full((rows, cols), kernel_size), sparse=True)
 
     mod.weights.data[:] = 1
     mod.biases.data[:] = 0
@@ -111,6 +115,19 @@ if __name__ == "__main__":
     print("weight, bias grads:")
     print(mod.weights.grad)
     print(mod.biases.grad)
+
+    # make sure result doesn't change for non-sparse version
+    mod_dense = ConvMat(rows, cols, in_channels, out_channels, np.full((rows, cols), kernel_size), sparse=False)
+
+    mod_dense.weights.data[:] = 1
+    mod_dense.biases.data[:] = 0
+
+    out_dense = mod_dense(tr.tensor(img).to(tr.float32)[None,:,:,None])
+    out_dense.sum().backward()
+
+    assert tr.allclose(out, out_dense)
+    assert tr.allclose(mod.weights.grad, mod_dense.weights.grad)
+    assert tr.allclose(mod.biases.grad, mod_dense.biases.grad)
 
     pt.imshow(out.detach().numpy()[:,:,0])
     # pt.show()
