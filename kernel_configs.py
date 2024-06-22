@@ -5,6 +5,10 @@ from scipy.special import lambertw
 import matplotlib.pyplot as pt
 import torch as tr
 
+# whether kernel weights are shared
+# when false, hidden features for parity is roughly linear from 0 to 50
+shared = True
+
 img_dim = 79 # fcg size after preproc
 R = img_dim // 2 # max radius
 
@@ -45,7 +49,7 @@ pt.show()
 # number of parameters
 
 class ConvModel(tr.nn.Module):
-    def __init__(self, hid_channels, decay_rate, sparse=True):
+    def __init__(self, hid_channels, decay_rate, sparse=True, shared=True):
         super().__init__()
 
         # based on FCG and atari data
@@ -66,7 +70,7 @@ class ConvModel(tr.nn.Module):
         # pt.colorbar()
         # pt.show()
 
-        self.conv = ConvMat(rows, cols, in_channels, hid_channels, kernel_sizes, sparse)
+        self.conv = ConvMat(rows, cols, in_channels, hid_channels, kernel_sizes, sparse, shared)
         self.relu = tr.nn.LeakyReLU()
         self.flat = tr.nn.Flatten()
         self.lin = tr.nn.Linear(rows * cols * hid_channels, out_dim)
@@ -79,7 +83,7 @@ class ConvModel(tr.nn.Module):
         return x
 
 # run configs
-if False:
+if True:
 
     configs = []
     mats = []
@@ -88,7 +92,7 @@ if False:
     
             for sparse in [False, True]:
     
-                model = ConvModel(hid_channels, decay_rate, sparse)
+                model = ConvModel(hid_channels, decay_rate, sparse, shared)
                 num_params = len(tr.nn.utils.parameters_to_vector(model.parameters()))
     
                 num_reps = 3
@@ -110,11 +114,11 @@ if False:
 
     results = np.array(configs).T
 
-    np.save("kernel_configs.npy", results)
-    np.save("kernel_configs_mats.npy", np.stack(mats))
+    np.save(f"kernel_configs_shared_{shared}.npy", results)
+    np.save(f"kernel_configs_mats_shared_{shared}.npy", np.stack(mats))
 
-results = np.load("kernel_configs.npy")
-mats = np.load("kernel_configs_mats.npy")
+results = np.load(f"kernel_configs_shared_{shared}.npy")
+mats = np.load(f"kernel_configs_mats_shared_{shared}.npy")
 
 fig = pt.figure(figsize=(6, 6))
 for d in range(len(mats)):

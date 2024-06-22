@@ -18,7 +18,7 @@ def batched(batch_size, inputs, targets):
     yield from zip(split_inputs, split_targets)
 
 class ConvModel(tr.nn.Module):
-    def __init__(self, hid_channels, decay_rate, sparse=True):
+    def __init__(self, hid_channels, decay_rate, sparse=True, shared=True):
         super().__init__()
 
         # based on FCG and atari data
@@ -31,7 +31,7 @@ class ConvModel(tr.nn.Module):
         r = (i[:,None]**2 + i**2)**0.5
         kernel_sizes = np.maximum(1, (K * np.exp(-decay_rate * r)).round().astype(int))
 
-        self.conv = ConvMat(rows, cols, in_channels, hid_channels, kernel_sizes, sparse)
+        self.conv = ConvMat(rows, cols, in_channels, hid_channels, kernel_sizes, sparse, shared)
         self.relu = tr.nn.LeakyReLU()
         self.flat = tr.nn.Flatten()
         self.lin = tr.nn.Linear(rows * cols * hid_channels, out_dim)
@@ -48,7 +48,8 @@ class ConvModel(tr.nn.Module):
 def main():
 
     do_train = True
-    num_epochs = 20
+    # num_epochs = 20 # not shared
+    num_epochs = 60 # shared
     decay_rate = .256
     hid_channels = 1
     batch_size = 32
@@ -66,7 +67,10 @@ def main():
 
     # init model
     print("init model...")
-    model = ConvModel(hid_channels, decay_rate, sparse=True)
+    model = ConvModel(hid_channels, decay_rate, sparse=True, shared=True)
+
+    print("Total parameter count:")
+    print(tr.nn.utils.parameters_to_vector(model.parameters()).numel())
 
     # init optimizer and loss
     opt = tr.optim.Adam(model.parameters(), lr=learning_rate)
