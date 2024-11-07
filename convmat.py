@@ -233,28 +233,33 @@ if __name__ == "__main__":
     assert (confluence == confluence_mat).all()
     
     # pt.figure(figsize=(26,4.5))
-    pt.figure(figsize=(20,3.5))
+    # pt.figure(figsize=(20,3.5))
+    pt.figure(figsize=(10,1.75))
     
     for n, kw in enumerate(kws):
-        pt.subplot(1, len(kws)+4, n+1)
+        pt.subplot(1, len(kws)+1, n+1)
         pt.imshow(cmats[n])
         pt.title(f"Kernel radius {kw}")
-    
-    pt.subplot(1, len(kws)+4, len(kws)+1)
+
+    pt.subplot(1, len(kws)+1, len(kws)+1)
     pt.title("Variable")
     pt.imshow(confluence)
-
-    pt.subplot(1, len(kws)+4, len(kws)+2)
-    pt.title("Variable")
-    pt.imshow(confluence_mat)
-
-    pt.subplot(1, len(kws)+4, len(kws)+3)
-    pt.title("Pixel drop-out")
-    # pt.imshow(cmats[-2][:,pixdrop.flatten()])
-    pt.imshow(cmats[-2] * pixdrop.reshape(1, -1))
     
-    pt.subplot(1, len(kws)+4, len(kws)+4)
-    pt.imshow(midx.reshape(-1, 1)*np.ones((1,5)))
+    # pt.subplot(1, len(kws)+4, len(kws)+1)
+    # pt.title("Variable")
+    # pt.imshow(confluence)
+
+    # pt.subplot(1, len(kws)+4, len(kws)+2)
+    # pt.title("Variable")
+    # pt.imshow(confluence_mat)
+
+    # pt.subplot(1, len(kws)+4, len(kws)+3)
+    # pt.title("Pixel drop-out")
+    # # pt.imshow(cmats[-2][:,pixdrop.flatten()])
+    # pt.imshow(cmats[-2] * pixdrop.reshape(1, -1))
+    
+    # pt.subplot(1, len(kws)+4, len(kws)+4)
+    # pt.imshow(midx.reshape(-1, 1)*np.ones((1,5)))
     
     pt.tight_layout()
     pt.savefig('confluence_pattern.png')
