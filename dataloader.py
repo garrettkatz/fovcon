@@ -36,12 +36,18 @@ class DataLoader:
                 if action == "null": action = -1
                 else: action = int(action)
 
-                # gaze: [..., [row, col], ...] array
-                if fields[6] == "null": gaze = ()
-                else: gaze = np.array(tuple(map(float, fields[6:]))).reshape(-1, 2)
-
                 # raw image
                 img = pt.imread(os.path.join(self.path, trial_base, f"{frame_id}.png")).astype(float)
+
+                # gaze
+                # according to https://zenodo.org/records/3451402
+                # gaze = x0,y0,...,xn,yn, x is horizontal, y is vertical, (0,0) is top left
+                # reformat to [..., [row, col], ...] array
+                if fields[6] == "null":
+                    gaze = ()
+                else:
+                    xy = np.array(tuple(map(float, fields[6:]))).reshape(-1, 2)
+                    gaze = xy[:,[1,0]] # x is column, y is row
 
                 yield action, gaze, img
 
@@ -59,9 +65,8 @@ def filter_frames(examples):
         # skip frames where gaze points barely changed
         if np.fabs(gaze[0] - gaze[-1]).max() < 5: continue
     
-        # skip frames where gaze coordinates are out of bounds
-        rows, cols, _ = img.shape
-        if (gaze < 0).any() or (gaze >= np.array([rows, cols])).any(): continue
+        # # skip frames where gaze coordinates are out of bounds
+        if (gaze < 0).any() or (gaze >= img.shape[:2]).any(): continue
 
         # keep the remainder
         yield (action, gaze, img)

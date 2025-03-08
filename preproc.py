@@ -35,7 +35,7 @@ if __name__ == "__main__":
         for ex, (action, gaze, img) in enumerate(filter_frames(dl.examples())):
     
             # preprocess example
-            gc, gr = gaze[-1].round().astype(int)
+            gr, gc = gaze[-1].astype(int)
             inp = fcg.sample(img, gr, gc)
             inp = tr.tensor(inp).to(tr.float32)
     
@@ -61,3 +61,4 @@ if __name__ == "__main__":
         pt.subplot(4,5, sp+1)
         pt.imshow(inputs[i].numpy())
     pt.show()
+
