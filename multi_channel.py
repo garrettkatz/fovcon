@@ -3,6 +3,7 @@ try:
 except:
     profile = lambda x: x
 import os
+import itertools as it
 import pickle as pk
 import numpy as np
 import matplotlib.pyplot as pt
@@ -32,9 +33,12 @@ def constant_channel(k, c):
     )
 
 class MultiChannel(tr.nn.Module):
-    def __init__(self, k_p, c_p, k_f, c_f):
-        # kernel size and channels for periph and fovea
+    def __init__(self, *hparams):
         super().__init__()
+
+        # kernel size and channels for periph and fovea
+        (k_p, c_p), (k_f, c_f) = hparams
+
         if min(k_p, c_p) > 0:
             self.periph = tr.nn.Sequential(
                 Permute((0,3,1,2)),
@@ -42,6 +46,7 @@ class MultiChannel(tr.nn.Module):
                 tr.nn.Flatten(),
                 tr.nn.LeakyReLU(),
             )
+
         if min(k_f, c_f) > 0:
             self.foveal = tr.nn.Sequential(
                 Permute((0,3,1,2)),
@@ -56,9 +61,10 @@ class MultiChannel(tr.nn.Module):
         self.lin = tr.nn.Linear(hid_p + hid_f, 18)
 
     def forward(self, x):
-        p = self.periph(x)
-        f = self.foveal(x[:,20:60,20:60,:])
-        return self.lin(tr.cat((p,f), dim=-1))
+        pf = []
+        if hasattr(self, "periph"): pf.append( self.periph(x) )
+        if hasattr(self, "foveal"): pf.append( self.foveal(x[:,20:60,20:60,:]) )
+        return self.lin(tr.cat(pf, dim=-1))
         
 
 if __name__ == "__main__":
@@ -66,80 +72,96 @@ if __name__ == "__main__":
     do_train = True
     data_path = os.path.join(os.environ["HOME"], "atarihead")
     trial_base = "100_RZ_3592991_Aug-24-11-44-38"
-    num_epochs = 100
-    batch_size = 16
-    learning_rate = 0.001
+    num_reps = 1
+    num_epochs = 50
+    batch_size = 32
+    learning_rate = 0.01
+    hparam_max = 7
+
+    # setup hyperparameters
+    kc = [(0,0)] + list(it.product(range(1, hparam_max), repeat=2))
+    kc_both = list(it.product(kc, repeat=2))[1:] # omit both zerod
+    # print("hparam settings:")
+    # for hparams in kc_both: print(hparams)
 
     # load preprocessed data
     inputs, targets = tr.load(os.path.join(data_path, trial_base) + ".pt")
 
-    # init model
-    # in: (batch_size, 79, 79, 3)
-
-    # model = tr.nn.Sequential(
-    #     Permute((0,3,1,2)), # (batch, 3, 79, 79)
-    #     tr.nn.Conv2d(3, 1, 6),
-    #     tr.nn.Flatten(),
-    #     tr.nn.LeakyReLU(),
-    #     tr.nn.Linear(5476, 18),
-    # )
-
-    # model = MultiChannel(3, 1, 3, 1)
-    model = constant_channel(3, 2)
-
-    nparams = len(tr.nn.utils.parameters_to_vector(model.parameters()))
-    print(f"{nparams} parameters")
-
-    # init optimizer and loss
-    opt = tr.optim.Adam(model.parameters(), lr=learning_rate)
-    loss_fn = tr.nn.CrossEntropyLoss()
-
-    # training loop
+    # experimental runs
+    results = []
     if do_train:
-        loss_curve = []
-        accu_curve = []
-        for epoch in range(num_epochs):
-            correct = []
-            for b, (inp, targ) in enumerate(batched(batch_size, inputs, targets)):
 
-                # forward pass
-                logits = model(inp)
-                loss = loss_fn(logits, targ)
-                loss_curve.append(loss.item())
-                correct.append((logits.argmax(dim=-1) == targ).to(float).mean())
+        for (rep, hparams) in it.product(range(num_reps), kc_both):
+
+            # init model
+            model = MultiChannel(*hparams)
+            nparams = len(tr.nn.utils.parameters_to_vector(model.parameters()))
+            print(f"rep {rep} hparams {hparams}: {nparams} parameters")
+        
+            # init optimizer and loss
+            opt = tr.optim.Adam(model.parameters(), lr=learning_rate)
+            loss_fn = tr.nn.CrossEntropyLoss()
+        
+            # training loop
+            loss_curve = []
+            accu_curve = []
+            for epoch in range(num_epochs):
+                correct = []
+                for b, (inp, targ) in enumerate(batched(batch_size, inputs, targets)):
     
-                # gradient update
-                loss.backward()
-                opt.step()
-                opt.zero_grad()
+                    # forward pass
+                    logits = model(inp)
+                    loss = loss_fn(logits, targ)
+                    loss_curve.append(loss.item())
+                    correct.append((logits.argmax(dim=-1) == targ).to(float).mean())
+        
+                    # gradient update
+                    loss.backward()
+                    opt.step()
+                    opt.zero_grad()
+        
+                    # if b % 40 == 0: print(f"epoch {epoch}, update {b}: loss = {loss_curve[-1]}")
     
-                if b % 40 == 0: print(f"epoch {epoch}, update {b}: loss = {loss_curve[-1]}")
-    
-            #     if len(loss_curve) == 5: break
-            # if len(loss_curve) == 5: break
+                accu_curve.append(np.mean(correct))
+                print(f" epoch {epoch}: accu = {accu_curve[-1]}")
 
-            accu_curve.append(np.mean(correct))
-            print(f"epoch {epoch}: accu = {accu_curve[-1]}")
+            results.append((hparams, nparams, loss_curve, accu_curve))
 
-        with open("multi_channel.pkl", "wb") as f:
-            pk.dump((loss_curve, accu_curve), f)
+            with open("multi_channel.pkl", "wb") as f: pk.dump(results, f)
 
-    with open("multi_channel.pkl", "rb") as f:
-        loss_curve, accu_curve = pk.load(f)
+    with open("multi_channel.pkl", "rb") as f: results = pk.load(f)
 
-    print(f"{nparams} parameters")
-    updates_per_epoch = len(loss_curve) / len(accu_curve)
+    # (hparams, nparams, loss_curve, accu_curve) = results[0]
+    # updates_per_epoch = len(loss_curve) / len(accu_curve)
+    # regret = 1.0 - np.mean(accu_curve)
+    # print(f"{nparams} parameters, regret={regret}")
 
-    fig = pt.figure(figsize=(6,3))
-    pt.subplot(1,2,1)
-    pt.plot(2*np.arange(len(loss_curve)), loss_curve)
-    pt.ylabel("Loss")
-    pt.subplot(1,2,2)
-    pt.plot(2*np.arange(len(accu_curve))*updates_per_epoch, accu_curve)
-    pt.ylabel("Accuracy")
-    fig.supxlabel("Parameter updates")
-    pt.tight_layout()
-    pt.savefig("multi_channel.png")
+    # fig = pt.figure(figsize=(6,3))
+    # pt.subplot(1,2,1)
+    # pt.plot(loss_curve)
+    # pt.ylabel("Loss")
+    # pt.xlabel("Parameter update")
+    # pt.subplot(1,2,2)
+    # pt.plot(accu_curve)
+    # pt.ylabel("Accuracy")
+    # pt.xlabel("Epoch")
+    # # fig.supxlabel("Parameter updates")
+    # pt.tight_layout()
+    # pt.savefig("multi_channel.png")
+    # pt.show()
+
+    npar, regret, ratio = [], [], []
+    for (hparams, nparams, loss_curve, accu_curve) in results:
+        
+        (k_p, c_p), (k_f, c_f) = hparams
+
+        npar.append(nparams)
+        regret.append(1.0 - np.mean(accu_curve))
+        ratio.append(c_f*k_f**2 / (c_f*k_f**2 + c_p*k_p**2))
+
+    pt.scatter(npar, regret, marker='o', c=ratio, edgecolors=(0,0,0))
+    pt.xlabel("Model Parameters")
+    pt.ylabel("Training Regret")
+    pt.colorbar(label="Foveal Parameter Ratio")
     pt.show()
-
 
