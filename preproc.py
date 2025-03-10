@@ -6,7 +6,7 @@ from fcg import FovealCartesianGeometry
 
 if __name__ == "__main__":
 
-    do_preproc = True
+    do_preproc = False
 
     # path to atarihead data
     data_path = os.path.join(os.environ["HOME"], "atarihead")
@@ -56,9 +56,13 @@ if __name__ == "__main__":
     print('inputs, targets shape')
     print(inputs.shape, targets.shape)
 
-    idx = tr.randperm(len(inputs))[:20]    
+    pt.figure(figsize=(4,8))
+    idx = tr.randperm(len(inputs))[:8]    
     for sp, i in enumerate(idx):
-        pt.subplot(4,5, sp+1)
+        pt.subplot(4, 2, sp+1)
         pt.imshow(inputs[i].numpy())
+        pt.title(f"Action {targets[i].item()}")
+        pt.axis("off")
+    pt.savefig(os.environ["HOME"] + "/nexus/grants/nsf_braid_qinru/venture_fcg.png")
     pt.show()
 

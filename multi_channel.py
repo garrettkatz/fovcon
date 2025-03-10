@@ -69,7 +69,7 @@ class MultiChannel(tr.nn.Module):
 
 if __name__ == "__main__":
 
-    do_train = True
+    do_train = False
     data_path = os.path.join(os.environ["HOME"], "atarihead")
     trial_base = "100_RZ_3592991_Aug-24-11-44-38"
     num_reps = 1
@@ -150,8 +150,41 @@ if __name__ == "__main__":
     # pt.savefig("multi_channel.png")
     # pt.show()
 
+    # single pathways
+
+    regrets = {"foveal": {}, "peripheral": {}}
+    for (hparams, nparams, loss_curve, accu_curve) in results:
+        (k_p, c_p), (k_f, c_f) = hparams
+
+        if k_p == c_p == 0:
+            if k_f not in regrets["foveal"]: regrets["foveal"][k_f] = {}
+            regrets["foveal"][k_f][c_f] = 1.0 - np.mean(accu_curve)
+        elif k_f == c_f == 0:
+            if k_p not in regrets["peripheral"]: regrets["peripheral"][k_p] = {}
+            regrets["peripheral"][k_p][c_p] = 1.0 - np.mean(accu_curve)
+        else: continue
+
+    pt.figure(figsize=(8,4))
+    for p, pathway in enumerate(("foveal", "peripheral")):
+        pt.subplot(1,2,p+1)
+        pt.title(pathway)
+        for k in regrets[pathway]:
+            c, reg = zip(*regrets[pathway][k].items())
+            pt.plot(c, reg, label=f"k={k}")
+        if p == 0: pt.ylabel("Regret")
+        pt.ylim([-.1, 1.1])
+        pt.legend()
+    pt.gcf().supxlabel("Feature Channels")
+    pt.tight_layout()
+    pt.savefig(os.environ["HOME"] + "/nexus/grants/nsf_braid_qinru/single_channel.png")
+    pt.show()
+
+    pt.figure(figsize=(12,4))
     npar, regret, ratio = [], [], []
     for (hparams, nparams, loss_curve, accu_curve) in results:
+        
+        # subsample points
+        if np.random.rand() < .65: continue
         
         (k_p, c_p), (k_f, c_f) = hparams
 
@@ -159,9 +192,11 @@ if __name__ == "__main__":
         regret.append(1.0 - np.mean(accu_curve))
         ratio.append(c_f*k_f**2 / (c_f*k_f**2 + c_p*k_p**2))
 
-    pt.scatter(npar, regret, marker='o', c=ratio, edgecolors=(0,0,0))
+    pt.scatter(npar, regret, marker='o', c=ratio, edgecolors="k")
     pt.xlabel("Model Parameters")
     pt.ylabel("Training Regret")
     pt.colorbar(label="Foveal Parameter Ratio")
+    pt.tight_layout()
+    pt.savefig(os.environ["HOME"] + "/nexus/grants/nsf_braid_qinru/multi_channel.png")    
     pt.show()
 
