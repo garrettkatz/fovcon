@@ -69,34 +69,57 @@ class MultiChannel(tr.nn.Module):
 
 if __name__ == "__main__":
 
-    do_train = False
-    data_path = os.path.join(os.environ["HOME"], "atarihead")
-    trial_base = "100_RZ_3592991_Aug-24-11-44-38"
+    do_train = True
+    data_path = os.path.join(os.environ["HOME"], "atarihead/venture")
+    # trial_base = "52_RZ_2394668_Aug-10-14-52-42" # ms pacman
+    trial_bases = [
+        "100_RZ_3592991_Aug-24-11-44-38",
+        "101_RZ_3603032_Aug-24-14-31-37",
+        "107_RZ_3682314_Aug-25-12-32-42",
+        "111_RZ_3865406_Aug-27-15-24-49",
+        "114_RZ_3870288_Aug-27-16-47-08",
+        "127_JAW_2764190_Dec-08-14-18-45",
+        "130_JAW_3029229_Dec-11-15-54-52",
+        "133_JAW_3106946_Dec-12-13-30-02",
+        "154_KM_5790027_Jan-12-14-48-42",
+        "155_KM_5791179_Jan-12-15-08-15",
+        "391_RZ_2354543_Jul-05-14-23-36",
+        "400_RZ_2533918_Jul-07-16-12-38",
+        "437_RZ_3132888_Jul-14-14-35-28",
+    ]
+
     num_reps = 1
     num_epochs = 50
     batch_size = 32
     learning_rate = 0.01
     hparam_max = 7
+    num_hparams = 10
 
     # setup hyperparameters
     kc = [(0,0)] + list(it.product(range(1, hparam_max), repeat=2))
     kc_both = list(it.product(kc, repeat=2))[1:] # omit both zerod
-    # print("hparam settings:")
-    # for hparams in kc_both: print(hparams)
 
-    # load preprocessed data
-    inputs, targets = tr.load(os.path.join(data_path, trial_base) + ".pt")
+    # random sub-sample of hyperparameters for reasonable execution time
+    idx = np.random.choice(len(kc_both), size=num_hparams, replace=False)
+    kc_both = [kc_both[i] for i in idx]
+
+    print("hparam settings:")
+    for h, hparams in enumerate(kc_both): print(h, hparams)
+    input('.')
+
+    # # load preprocessed data
+    # inputs, targets = tr.load(os.path.join(data_path, trial_base) + ".pt")
 
     # experimental runs
     results = []
     if do_train:
 
-        for (rep, hparams) in it.product(range(num_reps), kc_both):
+        for rh, (rep, hparams) in enumerate(it.product(range(num_reps), kc_both)):
 
             # init model
             model = MultiChannel(*hparams)
             nparams = len(tr.nn.utils.parameters_to_vector(model.parameters()))
-            print(f"rep {rep} hparams {hparams}: {nparams} parameters")
+            print(f"{rh}: rep {rep} hparams {hparams}: {nparams} parameters")
         
             # init optimizer and loss
             opt = tr.optim.Adam(model.parameters(), lr=learning_rate)
@@ -107,20 +130,25 @@ if __name__ == "__main__":
             accu_curve = []
             for epoch in range(num_epochs):
                 correct = []
-                for b, (inp, targ) in enumerate(batched(batch_size, inputs, targets)):
+
+                for trial_base in trial_bases:
+                    # load preprocessed data
+                    inputs, targets = tr.load(os.path.join(data_path, trial_base) + ".pt")
     
-                    # forward pass
-                    logits = model(inp)
-                    loss = loss_fn(logits, targ)
-                    loss_curve.append(loss.item())
-                    correct.append((logits.argmax(dim=-1) == targ).to(float).mean())
+                    for b, (inp, targ) in enumerate(batched(batch_size, inputs, targets)):
         
-                    # gradient update
-                    loss.backward()
-                    opt.step()
-                    opt.zero_grad()
-        
-                    # if b % 40 == 0: print(f"epoch {epoch}, update {b}: loss = {loss_curve[-1]}")
+                        # forward pass
+                        logits = model(inp)
+                        loss = loss_fn(logits, targ)
+                        loss_curve.append(loss.item())
+                        correct.append((logits.argmax(dim=-1) == targ).to(float).mean())
+            
+                        # gradient update
+                        loss.backward()
+                        opt.step()
+                        opt.zero_grad()
+            
+                        # if b % 40 == 0: print(f"epoch {epoch}, update {b}: loss = {loss_curve[-1]}")
     
                 accu_curve.append(np.mean(correct))
                 print(f" epoch {epoch}: accu = {accu_curve[-1]}")
@@ -183,8 +211,8 @@ if __name__ == "__main__":
     npar, regret, ratio = [], [], []
     for (hparams, nparams, loss_curve, accu_curve) in results:
         
-        # subsample points
-        if np.random.rand() < .65: continue
+        # # subsample points
+        # if np.random.rand() < .65: continue
         
         (k_p, c_p), (k_f, c_f) = hparams
 
