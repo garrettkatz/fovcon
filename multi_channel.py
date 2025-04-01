@@ -89,11 +89,11 @@ if __name__ == "__main__":
     ]
 
     num_reps = 1
-    num_epochs = 50
+    num_epochs = 100
     batch_size = 32
     learning_rate = 0.01
     hparam_max = 7
-    num_hparams = 10
+    num_hparams = 30
 
     # setup hyperparameters
     kc = [(0,0)] + list(it.product(range(1, hparam_max), repeat=2))
@@ -218,12 +218,19 @@ if __name__ == "__main__":
 
         npar.append(nparams)
         regret.append(1.0 - np.mean(accu_curve))
-        ratio.append(c_f*k_f**2 / (c_f*k_f**2 + c_p*k_p**2))
+        # ratio.append(c_f*k_f**2 / (c_f*k_f**2 + c_p*k_p**2))
+        ratio.append(c_f / (c_f + c_p)) # feature channels only
 
-    pt.scatter(npar, regret, marker='o', c=ratio, edgecolors="k")
-    pt.xlabel("Model Parameters")
+    # pt.scatter(npar, regret, marker='o', c=ratio, edgecolors="k")
+    # pt.colorbar(label="Foveal Parameter Ratio")
+    # pt.xlabel("Model Parameters")
+    # pt.ylabel("Training Regret")
+
+    pt.scatter(ratio, regret, marker='o', c=ratio, edgecolors="k")
+    pt.colorbar(label="Model Parameters")
+    pt.xlabel("Foveal Parameter Ratio")
     pt.ylabel("Training Regret")
-    pt.colorbar(label="Foveal Parameter Ratio")
+
     pt.tight_layout()
     pt.savefig(os.environ["HOME"] + "/nexus/grants/nsf_braid_qinru/multi_channel.png")    
     pt.show()
