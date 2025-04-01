@@ -93,7 +93,7 @@ if __name__ == "__main__":
     batch_size = 32
     learning_rate = 0.01
     hparam_max = 7
-    num_hparams = 30
+    num_hparams = 200
 
     # setup hyperparameters
     kc = [(0,0)] + list(it.product(range(1, hparam_max), repeat=2))
