@@ -6,7 +6,7 @@ from fcg import FovealCartesianGeometry
 
 if __name__ == "__main__":
 
-    do_preproc = True
+    do_preproc = False
 
     # path to atarihead data
     # data_path = os.path.join(os.environ["HOME"], "atarihead")
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     # the leading portion of filenames for one trial
     # venture
-    # trial_base = "100_RZ_3592991_Aug-24-11-44-38"
+    trial_base = "100_RZ_3592991_Aug-24-11-44-38"
     # trial_base = "101_RZ_3603032_Aug-24-14-31-37"
     # trial_base = "107_RZ_3682314_Aug-25-12-32-42"
     # trial_base = "111_RZ_3865406_Aug-27-15-24-49"
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     # trial_base = "155_KM_5791179_Jan-12-15-08-15"
     # trial_base = "391_RZ_2354543_Jul-05-14-23-36"
     # trial_base = "400_RZ_2533918_Jul-07-16-12-38"
-    trial_base = "437_RZ_3132888_Jul-14-14-35-28"
+    # trial_base = "437_RZ_3132888_Jul-14-14-35-28"
     # # ms pacman
     # trial_base = "52_RZ_2394668_Aug-10-14-52-42"
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     print(inputs.shape, targets.shape)
 
     pt.figure(figsize=(4,8))
-    idx = tr.randperm(len(inputs))[:8]    
+    idx = tr.randperm(len(inputs))[:8]
     for sp, i in enumerate(idx):
         pt.subplot(4, 2, sp+1)
         pt.imshow(inputs[i].numpy())
